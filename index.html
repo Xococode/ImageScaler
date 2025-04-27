@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Scaler & Adjuster</title>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- img-comparison-slider CDN -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/img-comparison-slider@8/dist/index.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/img-comparison-slider@8/dist/style.css" />
+    <!-- Styles -->
+    <style>
+        :root {
+            --bg-dark: #1e1f22; --bg-sidebar: #2b2d31; --bg-component: #313338;
+            --text-primary: #f2f3f5; --text-secondary: #949ba4; --text-header: #ffffff;
+            --border-color: #404249; --accent-color: #7289da; --accent-red: #f04747;
+            --accent-green: #43b581;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-sans); background-color: var(--bg-dark); color: var(--text-primary); line-height: 1.5; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        .main-container { display: flex; flex-grow: 1; height: calc(100vh); }
+        .sidebar { width: 320px; flex-shrink: 0; background-color: var(--bg-sidebar); padding: 25px 20px; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); overflow-y: auto; }
+        .sidebar::-webkit-scrollbar { width: 8px; }
+        .sidebar::-webkit-scrollbar-track { background: var(--bg-sidebar); }
+        .sidebar::-webkit-scrollbar-thumb { background-color: var(--bg-component) ; border-radius: 4px; border: 2px solid var(--bg-sidebar); }
+
+        .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .sidebar-header .logo { width: 48px; height: 48px; background-color: var(--accent-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .sidebar-header .logo i { font-size: 24px; color: white; }
+        .sidebar-header .title h1 { font-size: 1.5rem; color: var(--text-header); margin: 0; font-weight: 600; }
+        .sidebar-header .title p { font-size: 0.85rem; color: var(--text-secondary); margin: 0; }
+
+        .step { margin-bottom: 15px; }
+        .step h2 { font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px; }
+        .button { background-color: var(--bg-component); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 5px; padding: 10px 15px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease; text-align: center; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .button:hover:not(:disabled) { background-color: #3c3e44; border-color: #55585f; }
+        .button:disabled { background-color: #3a3c41; color: var(--text-secondary); cursor: not-allowed; border-color: #4a4d53;}
+        .button.red { background-color: var(--accent-red); border-color: transparent; color: white; }
+        .button.red:hover:not(:disabled) { background-color: #d83c3c; }
+        .button.purple { background-color: var(--accent-color); border-color: transparent; color: white; }
+        .button.purple:hover:not(:disabled) { background-color: #677bc4; }
+        .file-input-container { position: relative; overflow: hidden; display: block; width: 100%; }
+        .file-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 100px; }
+
+        /* Specific styles for controls */
+        .control-group { margin-bottom: 12px; }
+        .control-group label { display: block; font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 4px; }
+        .control-group input[type="number"],
+        .control-group input[type="range"] { background-color: var(--bg-component); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 5px; padding: 8px 10px; font-size: 0.9rem; width: 100%; transition: border-color 0.2s ease; }
+        .control-group input[type="number"]:focus, .control-group input[type="range"]:focus { outline: none; border-color: var(--accent-color); }
+        .control-group input[type="number"] { width: 6em; padding: 8px; }
+        .control-group input[type="range"] { padding: 0; height: 8px; cursor: pointer; accent-color: var(--accent-color); margin-top: 4px; -webkit-appearance: none; appearance: none; background: transparent; border-radius: 4px;}
+        .control-group input[type="range"]::-webkit-slider-runnable-track { height: 8px; background: var(--bg-component); border: 1px solid var(--border-color); border-radius: 4px; }
+        .control-group input[type="range"]::-moz-range-track { height: 8px; background: var(--bg-component); border: 1px solid var(--border-color); border-radius: 4px; }
+        .control-group input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; margin-top: -5px; height: 16px; width: 16px; background: var(--text-primary); border-radius: 50%; border: 1px solid var(--border-color); cursor: pointer; transition: background-color 0.2s ease; }
+        .control-group input[type="range"]::-moz-range-thumb { height: 14px; width: 14px; background: var(--text-primary); border-radius: 50%; border: 1px solid var(--border-color); cursor: pointer; transition: background-color 0.2s ease; }
+        .control-group input[type="range"]:hover::-webkit-slider-thumb { background-color: var(--accent-color); }
+        .control-group input[type="range"]:hover::-moz-range-thumb { background-color: var(--accent-color); }
+        .range-display { font-size: 0.85rem; color: var(--text-secondary); margin-left: 8px; white-space: nowrap;}
+        .inline-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+        .sidebar-footer { margin-top: auto; padding-top: 15px; border-top: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-secondary); text-align: center; }
+        .content-area { flex-grow: 1; background-color: var(--bg-dark); padding: 20px; position: relative; display: flex; /* Changed from flex */ justify-content: center; /* Center content */ align-items: center; /* Center content */ overflow: hidden; /* Crucial for containing zoomed image */ transition: background-color 0.2s ease; /* Added for drag-over */ }
+        .content-area.drag-over { background-color: var(--bg-component); /* Visual feedback for drag */ }
+
+        /* Updated for Zoom/Pan */
+        .comparison-wrapper {
+            /* Removed max-width/max-height to allow scaling beyond initial fit */
+            /* width/height set dynamically */
+            margin: 0; /* Removed auto margin */
+            border-radius: 8px;
+            overflow: hidden; /* Keep this */
+            position: relative; /* Changed from relative to absolute if inside centered flex */
+            background-color: var(--bg-dark); /* Or transparent */
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            /* Crucial for zoom/pan */
+            transform-origin: 0 0; /* Zoom from top-left corner initially */
+            transition: transform 0.1s ease-out; /* Smooth pan/zoom adjustments */
+            cursor: default; /* Default cursor */
+        }
+        .comparison-wrapper.can-grab {
+             cursor: grab; /* Indicate pannable */
+        }
+        .comparison-wrapper.is-panning {
+             cursor: grabbing; /* Indicate active panning */
+        }
+
+        img-comparison-slider {
+             width: 100%; /* Take full size of wrapper */
+             height: 100%; /* Take full size of wrapper */
+            --divider-width: 3px; --divider-color: var(--accent-color); --handle-size: 40px; --handle-color: var(--accent-color); --handle-background-color: var(--bg-sidebar); --handle-box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); --handle-border-color: var(--border-color);
+             /* Ensure slider interaction doesn't interfere with pan */
+             /* cursor set by parent wrapper */
+             display: block; /* Or flex/grid if needed */
+        }
+        /* Make images scale within the comparison slider */
+        img-comparison-slider img {
+            width: 100%; height: 100%;
+            object-fit: contain; /* Or cover, depending on desired behavior */
+            display: block;
+            max-width: none; /* Override potential limits */
+            max-height: none; /* Override potential limits */
+            background-color: #2f3136; /* BG for transparent areas */
+        }
+
+        .placeholder-text { pointer-events: none; /* Allow drop events on parent */ text-align: center; color: var(--text-secondary); padding: 2rem; border: 2px dashed var(--border-color); border-radius: 8px; margin: auto; max-width: 600px; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: border-color 0.2s ease; position: absolute; /* Center within content-area */ top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .content-area.drag-over .placeholder-text { border-color: var(--accent-color); }
+        .placeholder-text i { font-size: 3rem; margin-bottom: 1rem; color: var(--border-color); transition: color 0.2s ease;}
+        .content-area.drag-over .placeholder-text i { color: var(--accent-color); }
+
+        .reset-button { position: absolute; top: 15px; right: 20px; background-color: var(--bg-component); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: 5px; padding: 5px 12px; font-size: 0.85rem; cursor: pointer; transition: background-color 0.2s, color 0.2s; z-index: 20; }
+        .reset-button:hover { background-color: #3c3e44; color: var(--text-primary); }
+        .status { margin-top: 10px; font-size: 0.8rem; color: var(--text-secondary); text-align: center; min-height: 1.2em; transition: color 0.3s ease; }
+        .status.success { color: var(--accent-green); }
+        .status.error { color: var(--accent-red); }
+
+         /* Progress Bar Styles */
+        #progress-container { display: none; margin-top: 10px; margin-bottom: 5px;}
+        #progress-label { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px; text-align: center; }
+        #progress-bar-bg { background-color: var(--bg-component); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color); height: 10px; }
+        #progress-bar { width: 0%; height: 100%; background-color: var(--accent-green); transition: width 0.1s linear; border-radius: 4px;}
+    </style>
+</head>
+<body>
+    <!-- Main Layout -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo"> <i class="fas fa-expand-arrows-alt"></i> </div>
+                <div class="title"> <h1>Image Scaler</h1> <p>Bicubic + Adjustments</p> </div>
+            </div>
+
+            <div class="step">
+                <h2>Step 1: Load Image</h2>
+                <div class="file-input-container">
+                    <button class="button red"><i class="fas fa-image"></i> Select Image</button>
+                    <input type="file" id="image-input" class="file-input" accept="image/*">
+                </div>
+                 <p style="text-align: center; margin-top: 10px; font-size: 0.85rem; color: var(--text-secondary);">or drag & drop / paste image</p>
+            </div>
+
+            <div class="step">
+                <h2>Step 2: Configure Scaling & Adjustments</h2>
+                <div class="control-group">
+                    <label for="scaleFactor">Scale Factor:</label>
+                    <input type="number" id="scaleFactor" value="2" min="1" max="16" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label for="sharpenAmount">Sharpen Amount:</label>
+                    <div class="inline-controls">
+                         <input type="range" id="sharpenAmount" min="0" max="3" step="0.03" value="0.03">
+                         <span id="sharpenVal" class="range-display">1%</span>
+                    </div>
+                </div>
+                 <div class="control-group">
+                    <label for="brightnessAmount">Brightness:</label>
+                    <div class="inline-controls">
+                         <input type="range" id="brightnessAmount" min="-50" max="50" step="1" value="16">
+                         <span id="brightnessVal" class="range-display">+16%</span>
+                    </div>
+                </div>
+                 <div class="control-group">
+                    <label for="contrastAmount">Contrast:</label>
+                    <div class="inline-controls">
+                         <input type="range" id="contrastAmount" min="50" max="150" step="1" value="100">
+                         <span id="contrastVal" class="range-display">100%</span>
+                    </div>
+                </div>
+                 <div class="control-group">
+                    <label for="hueAmount">Hue Rotation:</label>
+                    <div class="inline-controls">
+                         <input type="range" id="hueAmount" min="-180" max="180" step="1" value="-10">
+                         <span id="hueVal" class="range-display">-10 deg</span>
+                    </div>
+                </div>
+                 <div class="control-group">
+                    <label for="saturationAmount">Saturation:</label>
+                    <div class="inline-controls">
+                         <input type="range" id="saturationAmount" min="0" max="200" step="1" value="176">
+                         <span id="saturationVal" class="range-display">176%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <h2>Step 3: Process Image</h2>
+                <button id="process-button" class="button purple" disabled><i class="fas fa-rocket"></i> Scale & Adjust</button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div id="progress-container">
+                 <div id="progress-label">Processing... 0%</div>
+                 <div id="progress-bar-bg">
+                    <div id="progress-bar"></div>
+                 </div>
+            </div>
+            <!-- End Progress Bar -->
+
+            <!-- Step 4 Output -->
+            <div class="step" id="output-step" style="display: none;">
+                <h2>Step 4: Output</h2>
+                 <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button id="download-button" class="button" disabled><i class="fas fa-download"></i> Download PNG</button>
+                    <button id="copy-button" class="button" disabled><i class="fas fa-copy"></i> Copy Image</button>
+                 </div>
+            </div>
+            <!-- END: Step 4 Output -->
+
+             <div class="status" id="status-text">Select an image to start.</div>
+
+            <footer class="sidebar-footer"> Bicubic Scaling & Real-time Adjustments </footer>
+        </aside>
+
+        <!-- Content Area (Drop Target & Zoom/Pan Container) -->
+        <main class="content-area" id="content-area">
+             <button class="reset-button" id="reset-button" style="display: none;" title="Reset Interface"><i class="fas fa-undo"></i> Reset</button>
+            <!-- Wrapper is now the direct child for centering and overflow handling -->
+            <div class="comparison-wrapper" id="comparison-wrapper">
+                <img-comparison-slider id="image-comparison-component" style="display: none;">
+                    <img slot="first" id="before-image" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Original" />
+                    <img slot="second" id="after-image" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Processed" />
+                 </img-comparison-slider>
+            </div>
+            <div class="placeholder-text" id="placeholder-text">
+                 <i class="fas fa-cloud-upload-alt"></i> <!-- Changed icon -->
+                <h3>Select, Drop, or Paste Image</h3>
+                <p>Your processed image comparison will appear here.</p>
+            </div>
+        </main>
+    </div> <!-- End Main Container -->
+
+    <!-- Hidden canvases -->
+    <canvas id="readCanvas" style="display:none;"></canvas>
+    <canvas id="tempOutputCanvas" style="display:none;"></canvas>
+
+    <script>
+        // Wait for component definition
+        customElements.whenDefined('img-comparison-slider').then(() => {
+            console.log('img-comparison-slider ready.');
+            initialize();
+        });
+
+        // --- HSL Color Conversion Utilities ---
+        function rgbToHsl(r, g, b) { r /= 255, g /= 255, b /= 255; const max = Math.max(r, g, b), min = Math.min(r, g, b); let h, s, l = (max + min) / 2; if (max === min) { h = s = 0; } else { const d = max - min; s = l > 0.5 ? d / (2 - max - min) : d / (max + min); switch (max) { case r: h = (g - b) / d + (g < b ? 6 : 0); break; case g: h = (b - r) / d + 2; break; case b: h = (r - g) / d + 4; break; } h /= 6; } return [h * 360, s, l]; }
+        function hslToRgb(h, s, l) { let r, g, b; h /= 360; if (s === 0) { r = g = b = l; } else { const hue2rgb = (p, q, t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; }; const q = l < 0.5 ? l * (1 + s) : l + s - l * s; const p = 2 * l - q; r = hue2rgb(p, q, h + 1 / 3); g = hue2rgb(p, q, h); b = hue2rgb(p, q, h - 1 / 3); } return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]; }
+
+        // --- Image Processing Functions ---
+        function cubicInterpolate(p0, p1, p2, p3, t) { const a = -0.5*p0 + 1.5*p1 - 1.5*p2 + 0.5*p3; const b = p0 - 2.5*p1 + 2*p2 - 0.5*p3; const c = -0.5*p0 + 0.5*p2; const d = p1; return ((a*t + b)*t + c)*t + d; }
+        function getPixel(data, w, h, x, y, c) { x = Math.max(0, Math.min(w-1, x)); y = Math.max(0, Math.min(h-1, y)); return data[(y*w + x)*4 + c]; }
+        function bicubicResizeAsync(src, srcW, srcH, scale, progressCallback) { return new Promise((resolve, reject) => { const dstW = Math.floor(srcW * scale); const dstH = Math.floor(srcH * scale); if (dstW <= 0 || dstH <= 0 || dstW > 16384 || dstH > 16384) return reject(new Error(`Invalid scale or resulting dimensions too large (max 16384px): ${dstW}x${dstH}`)); const dst = new Uint8ClampedArray(dstW * dstH * 4); let currentRow = 0; const chunkSize = Math.max(1, Math.floor(2000000 / (dstW * 4))); /* console.log(`Using chunk size: ${chunkSize} rows`); */ function processChunk() { try { const endRow = Math.min(currentRow + chunkSize, dstH); for (let j = currentRow; j < endRow; j++) { const y = j / scale, yInt = Math.floor(y), yFrac = y - yInt; for (let i = 0; i < dstW; i++) { const x = i / scale, xInt = Math.floor(x), xFrac = x - xInt; const dstIdx = (j * dstW + i) * 4; for (let c = 0; c < 4; c++) { const arr = []; for (let m = -1; m <= 2; m++) { const row = []; for (let n = -1; n <= 2; n++) { row.push(getPixel(src, srcW, srcH, xInt + n, yInt + m, c)); } arr.push(cubicInterpolate(row[0], row[1], row[2], row[3], xFrac)); } const val = cubicInterpolate(arr[0], arr[1], arr[2], arr[3], yFrac); dst[dstIdx + c] = Math.max(0, Math.min(255, val)); } } } currentRow = endRow; const percent = Math.round((currentRow / dstH) * 100); if (progressCallback) progressCallback(Math.min(percent, 99), "Scaling..."); if (currentRow < dstH) { setTimeout(processChunk, 0); } else { resolve({ data: dst, width: dstW, height: dstH }); } } catch (error) { reject(error); } } processChunk(); }); }
+        function applySharpen(srcData, w, h, amount) { const dst = new Uint8ClampedArray(srcData.length); const strength = amount * 2.5; const center = 1 + 8*strength; const adjacent = -strength * 1.2; const diagonal = -strength * 0.5; for (let y = 0; y < h; y++) { for (let x = 0; x < w; x++) { const pos = (y*w + x)*4; for (let c = 0; c < 3; c++) { let sum = 0; sum += getPixel(srcData, w, h, x-1, y-1, c) * diagonal; sum += getPixel(srcData, w, h, x+1, y-1, c) * diagonal; sum += getPixel(srcData, w, h, x-1, y+1, c) * diagonal; sum += getPixel(srcData, w, h, x+1, y+1, c) * diagonal; sum += getPixel(srcData, w, h, x, y-1, c) * adjacent; sum += getPixel(srcData, w, h, x-1, y, c) * adjacent; sum += getPixel(srcData, w, h, x+1, y, c) * adjacent; sum += getPixel(srcData, w, h, x, y+1, c) * adjacent; sum += getPixel(srcData, w, h, x, y, c) * center; dst[pos + c] = Math.max(0, Math.min(255, sum)); } dst[pos + 3] = srcData[pos + 3]; } } return dst; }
+        function enhanceLocalContrast(srcData, w, h, amount) { if (!srcData || w <= 0 || h <= 0 || amount <= 0) return srcData; return applySharpen(srcData, w, h, amount); }
+        function applyBrightnessContrast(srcData, w, h, brightness, contrast) { const dst = new Uint8ClampedArray(srcData.length); const contrastFactor = contrast / 100.0; const brightnessOffset = brightness; for (let i = 0; i < srcData.length; i += 4) { for (let c = 0; c < 3; c++) { let value = srcData[i + c]; value = 128 + contrastFactor * (value - 128); value += brightnessOffset; dst[i + c] = Math.max(0, Math.min(255, value)); } dst[i + 3] = srcData[i + 3]; } return dst; }
+        function applyHueSaturation(srcData, w, h, hueShift, saturationFactor) { const dst = new Uint8ClampedArray(srcData.length); const needsHueShift = hueShift !== 0; const needsSaturationChange = saturationFactor !== 1.0; if (!needsHueShift && !needsSaturationChange) return srcData; for (let i = 0; i < srcData.length; i += 4) { const r = srcData[i], g = srcData[i+1], b = srcData[i+2], a = srcData[i+3]; let [h, s, l] = rgbToHsl(r, g, b); if (needsHueShift) h = (h + hueShift + 360) % 360; if (needsSaturationChange) s = Math.max(0, Math.min(1, s * saturationFactor)); const [newR, newG, newB] = hslToRgb(h, s, l); dst[i] = newR; dst[i+1] = newG; dst[i+2] = newB; dst[i+3] = a; } return dst; }
+
+        // --- State Variables ---
+        let originalImage = null, originalImageData = null, originalImageW = 0, originalImageH = 0;
+        let originalFilename = 'image.png';
+        let scaledImageData = null, scaledW = 0, scaledH = 0;
+        let isProcessing = false;
+        let debounceTimer = null;
+        let lastSuccessfulDataUrl = null;
+
+        // --- Zoom/Pan State ---
+        let zoomLevel = 1;
+        let translateX = 0;
+        let translateY = 0;
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+        let panStartTranslateX = 0;
+        let panStartTranslateY = 0;
+        const MIN_ZOOM = 1;
+        const MAX_ZOOM = 10;
+        const ZOOM_FACTOR = 1.1;
+
+        // --- DOM Elements ---
+        const imageInput = document.getElementById('image-input');
+        const scaleFactorInput = document.getElementById('scaleFactor');
+        const sharpenAmountSlider = document.getElementById('sharpenAmount'); const sharpenValueDisplay = document.getElementById('sharpenVal');
+        const brightnessAmountSlider = document.getElementById('brightnessAmount'); const brightnessValueDisplay = document.getElementById('brightnessVal');
+        const contrastAmountSlider = document.getElementById('contrastAmount'); const contrastValueDisplay = document.getElementById('contrastVal');
+        const hueAmountSlider = document.getElementById('hueAmount'); const hueValueDisplay = document.getElementById('hueVal');
+        const saturationAmountSlider = document.getElementById('saturationAmount'); const saturationValueDisplay = document.getElementById('saturationVal');
+        const processButton = document.getElementById('process-button');
+        const statusText = document.getElementById('status-text');
+        const contentArea = document.getElementById('content-area'); // For Drag & Drop
+        const comparisonWrapper = document.getElementById('comparison-wrapper');
+        const beforeImage = document.getElementById('before-image'); const afterImage = document.getElementById('after-image');
+        const comparisonComponent = document.getElementById('image-comparison-component');
+        const placeholderText = document.getElementById('placeholder-text');
+        const resetButton = document.getElementById('reset-button');
+        const readCanvas = document.getElementById('readCanvas'); const readCtx = readCanvas.getContext('2d', { willReadFrequently: true });
+        const tempOutputCanvas = document.getElementById('tempOutputCanvas'); const tempOutputCtx = tempOutputCanvas.getContext('2d');
+        const progressContainer = document.getElementById('progress-container'); const progressBar = document.getElementById('progress-bar'); const progressLabel = document.getElementById('progress-label');
+        const outputStepContainer = document.getElementById('output-step'); const downloadButton = document.getElementById('download-button'); const copyButton = document.getElementById('copy-button');
+
+
+        // --- Initialization ---
+        function initialize() {
+            // File Input
+            imageInput.addEventListener('change', handleFileInputChange);
+
+            // Drag and Drop Listeners (on content area)
+            contentArea.addEventListener('dragover', handleDragOver);
+            contentArea.addEventListener('dragleave', handleDragLeave);
+            contentArea.addEventListener('drop', handleDrop);
+
+            // Paste Listener (on document)
+            document.addEventListener('paste', handlePaste);
+
+            // Button Listeners
+            processButton.addEventListener('click', runFullProcess);
+            resetButton.addEventListener('click', resetInterface);
+            downloadButton.addEventListener('click', downloadProcessedImage);
+            copyButton.addEventListener('click', copyProcessedImage);
+
+            // Slider Listeners
+            [sharpenAmountSlider, brightnessAmountSlider, contrastAmountSlider, hueAmountSlider, saturationAmountSlider]
+                .forEach(slider => slider.addEventListener('input', handleSliderChange));
+
+            // Zoom/Pan Listeners (on the wrapper)
+            comparisonWrapper.addEventListener('wheel', handleWheelZoom, { passive: false }); // Prevent page scroll
+            comparisonWrapper.addEventListener('mousedown', handlePanStart);
+            // Mouse move/up listeners are added to the document during panning
+
+            updateAllSliderDisplays(); // Set initial display text based on HTML values
+            resetInterface(); // Apply initial state (includes checkClipboardSupport and zoom/pan reset)
+            console.log("App Initialized.");
+        }
+
+        // --- UI Update Functions ---
+        function updateAllSliderDisplays() { const sharpenAmount = parseFloat(sharpenAmountSlider.value); sharpenValueDisplay.textContent = `${Math.min(100, Math.round((sharpenAmount / 3) * 100))}%`; const brightnessAmount = parseInt(brightnessAmountSlider.value); brightnessValueDisplay.textContent = `${brightnessAmount >= 0 ? '+' : ''}${brightnessAmount}%`; const contrastAmount = parseInt(contrastAmountSlider.value); contrastValueDisplay.textContent = `${contrastAmount}%`; const hueAmount = parseInt(hueAmountSlider.value); hueValueDisplay.textContent = `${hueAmount >= 0 ? '+' : ''}${hueAmount} deg`; const saturationAmount = parseInt(saturationAmountSlider.value); saturationValueDisplay.textContent = `${saturationAmount}%`; }
+        function updateProgress(percent, label = "Processing...") { percent = Math.max(0, Math.min(100, percent)); progressBar.style.width = `${percent}%`; progressLabel.textContent = `${label} ${percent}%`; progressContainer.style.display = 'block'; }
+        function setStatus(message, type = 'info') { statusText.textContent = message; statusText.className = 'status'; if (type === 'success') statusText.classList.add('success'); else if (type === 'error') statusText.classList.add('error'); }
+
+        // --- Image Loading Logic ---
+        function handleFileInputChange(e) {
+            if (e.target.files && e.target.files[0]) {
+                processImageFile(e.target.files[0]);
+            }
+        }
+
+        function processImageFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                setStatus('Invalid file type. Please use an image.', 'error');
+                return;
+            }
+            originalFilename = file.name; // Store name from file object
+            setStatus('Reading image file...', 'info');
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                 setStatus('Decoding image data...', 'info');
+                 const img = new Image();
+                 img.onload = function() {
+                      originalImage = img; originalImageW = img.naturalWidth; originalImageH = img.naturalHeight;
+                      if (originalImageW === 0 || originalImageH === 0) { setStatus('Image dimensions invalid.', 'error'); resetInterface(); return; }
+                      if (originalImageW * originalImageH > 50000000) { if (!confirm(`Large image (${originalImageW}x${originalImageH}). May be slow. Continue?`)) { resetInterface(); return; } }
+
+                      readCanvas.width = originalImageW; readCanvas.height = originalImageH; readCtx.drawImage(img, 0, 0);
+                      try { originalImageData = readCtx.getImageData(0, 0, originalImageW, originalImageH); }
+                      catch (e) { console.error("Error getting ImageData:", e); setStatus('Error reading image data (maybe CORS?).', 'error'); resetInterface(); return; }
+
+                      // --- Initial Display Size & Position ---
+                      const contentAreaRect = contentArea.getBoundingClientRect();
+                      const availableWidth = contentAreaRect.width - 40; // Padding
+                      const availableHeight = contentAreaRect.height - 40; // Padding
+                      const imgRatio = originalImageW / originalImageH;
+                      let displayWidth = availableWidth;
+                      let displayHeight = displayWidth / imgRatio;
+                      if (displayHeight > availableHeight) {
+                          displayHeight = availableHeight;
+                          displayWidth = displayHeight * imgRatio;
+                      }
+                      comparisonWrapper.style.width = `${Math.round(displayWidth)}px`;
+                      comparisonWrapper.style.height = `${Math.round(displayHeight)}px`;
+                      // Reset zoom/pan *before* making visible
+                      resetZoomPan();
+
+                      requestAnimationFrame(() => {
+                           comparisonWrapper.style.display = 'block'; // Display the wrapper
+                           placeholderText.style.display = 'none';
+                           comparisonComponent.style.display = 'block'; // Display the slider
+                           resetButton.style.display = 'block';
+
+                           const imageSrc = event.target.result;
+                           beforeImage.src = imageSrc;
+                           afterImage.src = imageSrc; // Start with same image
+                           lastSuccessfulDataUrl = imageSrc; // Store original as 'last successful' initially
+
+                           if (comparisonComponent) comparisonComponent.value = 50; // Reset slider position
+                           processButton.disabled = false;
+                           processButton.innerHTML = '<i class="fas fa-rocket"></i> Scale & Adjust';
+                           setStatus('Image loaded. Ready.', 'info');
+
+                           // Reset processing state
+                           scaledImageData = null; scaledW = 0; scaledH = 0;
+                           progressContainer.style.display = 'none';
+                           outputStepContainer.style.display = 'none';
+                           downloadButton.disabled = true;
+                           copyButton.disabled = true;
+                           checkClipboardSupport();
+                      });
+                 };
+                 img.onerror = () => { setStatus("Error loading image data.", 'error'); resetInterface(); }
+                 img.src = event.target.result;
+            };
+            reader.onerror = () => { setStatus("Error reading file.", 'error'); resetInterface(); }
+            reader.readAsDataURL(file);
+        }
+
+        // --- Drag & Drop Handlers ---
+        function handleDragOver(e) { e.preventDefault(); e.stopPropagation(); if (!isPanning) contentArea.classList.add('drag-over'); } // Prevent during pan
+        function handleDragLeave(e) { e.preventDefault(); e.stopPropagation(); contentArea.classList.remove('drag-over'); }
+        function handleDrop(e) {
+            e.preventDefault(); e.stopPropagation();
+            contentArea.classList.remove('drag-over');
+            if (isPanning) return; // Don't process drop if panning
+            setStatus('Processing dropped file...', 'info');
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) { processImageFile(files[0]); }
+            else { setStatus('No valid files dropped.', 'error'); }
+        }
+
+        // --- Paste Handler ---
+        function handlePaste(e) {
+             // Don't paste if focus is inside an input field
+             if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                 return;
+             }
+             const items = (e.clipboardData || window.clipboardData)?.items;
+             if (!items) { console.warn("Clipboard items not accessible."); return; }
+             let foundImage = false;
+             for (let i = 0; i < items.length; i++) {
+                 if (items[i].type.startsWith('image/')) {
+                     const file = items[i].getAsFile();
+                     if (file) {
+                         setStatus('Processing pasted image...', 'info');
+                         processImageFile(file);
+                         foundImage = true;
+                         break;
+                     }
+                 }
+             }
+             if (foundImage) { e.preventDefault(); }
+             else { console.log("Paste event did not contain a recognized image file."); }
+        }
+
+
+        // --- Reset UI ---
+        function resetInterface() {
+             originalImage = null; originalImageData = null; originalImageW = 0; originalImageH = 0; originalFilename = 'image.png';
+             scaledImageData = null; scaledW = 0; scaledH = 0; isProcessing = false; lastSuccessfulDataUrl = null;
+             imageInput.value = '';
+             const blankPixel = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+             beforeImage.src = blankPixel; afterImage.src = blankPixel;
+
+             comparisonWrapper.style.display = 'none'; // Hide wrapper
+             placeholderText.style.display = 'flex'; // Show placeholder
+             comparisonComponent.style.display = 'none'; // Hide slider explicitly
+             resetButton.style.display = 'none';
+
+             processButton.disabled = true; processButton.innerHTML = '<i class="fas fa-rocket"></i> Scale & Adjust';
+             setStatus('Select, drop, or paste an image.', 'info');
+             progressContainer.style.display = 'none';
+             outputStepContainer.style.display = 'none';
+             downloadButton.disabled = true; copyButton.disabled = true;
+
+             // Reset sliders to *CUSTOM* defaults on RESET
+             scaleFactorInput.value = 2;
+             sharpenAmountSlider.value = 0.03;
+             brightnessAmountSlider.value = 16;
+             contrastAmountSlider.value = 150;
+             hueAmountSlider.value = -7;
+             saturationAmountSlider.value = 94;
+             updateAllSliderDisplays();
+
+             resetZoomPan(); // Reset zoom/pan state
+
+             checkClipboardSupport();
+             console.log("Interface reset to custom defaults.");
+        }
+
+
+        // --- Processing Logic ---
+        async function runFullProcess() {
+             if (!originalImageData || isProcessing) return;
+             isProcessing = true; processButton.disabled = true; downloadButton.disabled = true; copyButton.disabled = true; outputStepContainer.style.display = 'none';
+             processButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+             setStatus('Starting scaling...', 'info'); progressContainer.style.display = 'block'; updateProgress(0, "Starting...");
+
+             const scale = parseFloat(scaleFactorInput.value);
+             if (isNaN(scale) || scale <= 0 || scale > 16) { setStatus(`Invalid scale factor: ${scale}. Must be > 0 & <= 16.`, 'error'); processButton.innerHTML = '<i class="fas fa-times"></i> Error'; isProcessing = false; progressContainer.style.display = 'none'; setTimeout(() => { processButton.disabled = !originalImageData; }, 1000); return; }
+
+             try {
+                 setStatus('Scaling (bicubic)...', 'info');
+                 // Reset zoom/pan before processing potentially changes image dimensions
+                 resetZoomPan();
+                 const resized = await bicubicResizeAsync(originalImageData.data, originalImageW, originalImageH, scale, updateProgress);
+                 scaledImageData = resized.data; scaledW = resized.width; scaledH = resized.height;
+                 updateProgress(99, "Applying adjustments..."); setStatus('Applying final adjustments...', 'info');
+                 await applyAllAdjustmentsAndRender(true); // isFinalStep = true
+                 updateProgress(100, "Completed"); setStatus('Processing complete!', 'success'); processButton.innerHTML = '<i class="fas fa-check"></i> Completed';
+                 outputStepContainer.style.display = 'block'; downloadButton.disabled = false; checkClipboardSupport();
+                 setTimeout(() => { progressContainer.style.display = 'none'; }, 1500);
+             } catch (error) { console.error('Error during processing:', error); setStatus(`Processing error: ${error.message}`, 'error'); processButton.innerHTML = '<i class="fas fa-times"></i> Error'; scaledImageData = null; afterImage.src = beforeImage.src; lastSuccessfulDataUrl = beforeImage.src; progressContainer.style.display = 'none'; outputStepContainer.style.display = 'none'; downloadButton.disabled = true; copyButton.disabled = true; }
+             finally { isProcessing = false; setTimeout(() => { if (!processButton.innerHTML.includes('Error') && !processButton.innerHTML.includes('spin') && originalImageData) { processButton.disabled = false; processButton.innerHTML = '<i class="fas fa-rocket"></i> Scale & Adjust'; } else if (!originalImageData) { processButton.disabled = true; } }, 1500); }
+        }
+
+        function handleSliderChange() { updateAllSliderDisplays(); if (scaledImageData && !isProcessing) { clearTimeout(debounceTimer); debounceTimer = setTimeout(() => { if (scaledImageData && !isProcessing) { applyAllAdjustmentsAndRender(); } }, 100); } }
+
+        async function applyAllAdjustmentsAndRender(isFinalStep = false) {
+            if (!scaledImageData) { console.warn("Adjust without scaled data."); return; }
+            if (isProcessing && !isFinalStep) { console.log("Skip adjustment during main process."); return; }
+            const wasProcessing = isProcessing; if (!isFinalStep) isProcessing = true;
+            if (isFinalStep || !wasProcessing) setStatus('Applying adjustments...', 'info');
+            const sharpenAmount = parseFloat(sharpenAmountSlider.value); const brightnessAmount = parseInt(brightnessAmountSlider.value); const contrastAmount = parseInt(contrastAmountSlider.value); const hueAmount = parseInt(hueAmountSlider.value); const saturationAmount = parseInt(saturationAmountSlider.value); const saturationFactor = saturationAmount / 100.0;
+            await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI update
+            try {
+                let currentPixelData = new Uint8ClampedArray(scaledImageData); // Start with the scaled data
+                if (sharpenAmount > 0) currentPixelData = enhanceLocalContrast(currentPixelData, scaledW, scaledH, sharpenAmount);
+                if (brightnessAmount !== 0 || contrastAmount !== 100) currentPixelData = applyBrightnessContrast(currentPixelData, scaledW, scaledH, brightnessAmount, contrastAmount);
+                if (hueAmount !== 0 || saturationAmount !== 100) currentPixelData = applyHueSaturation(currentPixelData, scaledW, scaledH, hueAmount, saturationFactor);
+
+                // Render to hidden canvas to get Data URL
+                tempOutputCanvas.width = scaledW; tempOutputCanvas.height = scaledH;
+                const finalImageData = new ImageData(currentPixelData, scaledW, scaledH);
+                tempOutputCtx.putImageData(finalImageData, 0, 0);
+                const dataUrl = tempOutputCanvas.toDataURL('image/png');
+
+                afterImage.src = dataUrl; // Update the 'after' image in the slider
+                lastSuccessfulDataUrl = dataUrl; // Store for download/copy
+
+                 if (isFinalStep || !wasProcessing) {
+                     setStatus(isFinalStep ? 'Final adjustments applied.' : 'Adjustments applied.', 'info');
+                     if (lastSuccessfulDataUrl && !lastSuccessfulDataUrl.startsWith('data:image/gif')) {
+                         outputStepContainer.style.display = 'block';
+                         downloadButton.disabled = false;
+                         checkClipboardSupport(); // Enables copy button if possible
+                     } else {
+                         outputStepContainer.style.display = 'none';
+                         downloadButton.disabled = true;
+                         copyButton.disabled = true;
+                     }
+                 }
+            } catch (error) { console.error("Error applying adjustments:", error); if (isFinalStep || !wasProcessing) setStatus(`Adj. error: ${error.message}`, 'error'); outputStepContainer.style.display = 'none'; downloadButton.disabled = true; copyButton.disabled = true; }
+            finally { if (!isFinalStep) isProcessing = false; }
+        }
+
+        // --- Zoom and Pan Functions ---
+
+        function applyTransform() {
+            // Apply scale and translation
+            comparisonWrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`;
+            // Update cursor based on zoom level
+            if (zoomLevel > 1) {
+                comparisonWrapper.classList.add('can-grab');
+            } else {
+                 comparisonWrapper.classList.remove('can-grab');
+                 comparisonWrapper.classList.remove('is-panning'); // Ensure grabbing cursor is removed if zoom = 1
+            }
+        }
+
+        function resetZoomPan() {
+            zoomLevel = 1;
+            translateX = 0;
+            translateY = 0;
+            isPanning = false;
+            comparisonWrapper.style.transform = ''; // Remove transform style
+             comparisonWrapper.classList.remove('can-grab', 'is-panning'); // Reset cursor classes
+            // Remove potential lingering document listeners if reset happens unexpectedly
+            document.removeEventListener('mousemove', handlePanMove);
+            document.removeEventListener('mouseup', handlePanEnd);
+        }
+
+        function handleWheelZoom(e) {
+            if (!originalImage || isProcessing) return; // Only zoom if image is loaded and not busy
+
+            e.preventDefault(); // Prevent page scrolling
+
+            const rect = comparisonWrapper.getBoundingClientRect();
+            // Mouse position relative to the wrapper's top-left corner
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Calculate the point in the image corresponding to the mouse position *before* zoom
+            // (mouseX - translateX) is the mouse pos relative to the scaled image's top-left
+            // Divide by zoomLevel to get the position on the original (pre-zoom) image scale
+            const imageX = (mouseX - translateX) / zoomLevel;
+            const imageY = (mouseY - translateY) / zoomLevel;
+
+            // Calculate new zoom level
+            const delta = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
+            const oldZoomLevel = zoomLevel;
+            zoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel * delta));
+
+            if (zoomLevel === oldZoomLevel) return; // No change
+
+            // Calculate the new translation needed to keep the point under the mouse stationary
+            // newTranslateX = mouseX - (new position of imageX)
+            // new position of imageX = imageX * newZoomLevel
+            translateX = mouseX - (imageX * zoomLevel);
+            translateY = mouseY - (imageY * zoomLevel);
+
+            // If zoomed back to 1, reset translation to exactly 0
+            if (zoomLevel === MIN_ZOOM) {
+                translateX = 0;
+                translateY = 0;
+            }
+
+            applyTransform();
+        }
+
+        function handlePanStart(e) {
+             // Allow panning only with the main mouse button (usually left)
+            if (!originalImage || isProcessing || zoomLevel <= 1 || e.button !== 0) return;
+
+            e.preventDefault(); // Prevent text selection/image dragging
+            isPanning = true;
+            panStartX = e.clientX;
+            panStartY = e.clientY;
+            panStartTranslateX = translateX;
+            panStartTranslateY = translateY;
+
+            comparisonWrapper.classList.add('is-panning'); // Change cursor
+
+            // Add listeners to the document to capture movement outside the element
+            document.addEventListener('mousemove', handlePanMove);
+            document.addEventListener('mouseup', handlePanEnd);
+            document.addEventListener('mouseleave', handlePanEnd); // Also stop if mouse leaves document
+        }
+
+        function handlePanMove(e) {
+            if (!isPanning) return;
+
+            e.preventDefault();
+            const deltaX = e.clientX - panStartX;
+            const deltaY = e.clientY - panStartY;
+
+            translateX = panStartTranslateX + deltaX;
+            translateY = panStartTranslateY + deltaY;
+
+            applyTransform();
+        }
+
+        function handlePanEnd(e) {
+            if (!isPanning) return;
+
+             // Check if it's the correct button being released if the event is mouseup
+             if (e.type === 'mouseup' && e.button !== 0) return;
+
+            isPanning = false;
+            comparisonWrapper.classList.remove('is-panning'); // Restore grab cursor
+
+            // Remove document listeners
+            document.removeEventListener('mousemove', handlePanMove);
+            document.removeEventListener('mouseup', handlePanEnd);
+            document.removeEventListener('mouseleave', handlePanEnd);
+        }
+
+
+        // --- Output Functions ---
+        function downloadProcessedImage() { if (!lastSuccessfulDataUrl || lastSuccessfulDataUrl.startsWith('data:image/gif')) { setStatus("No processed image to download.", 'error'); return; } const link = document.createElement('a'); link.href = lastSuccessfulDataUrl; const baseName = originalFilename.substring(0, originalFilename.lastIndexOf('.')) || originalFilename; const scale = parseFloat(scaleFactorInput.value) || 1; link.download = `${baseName}_scaled_x${scale.toFixed(1)}_processed.png`; document.body.appendChild(link); link.click(); document.body.removeChild(link); setStatus("Download started.", 'success'); }
+        async function copyProcessedImage() { if (!lastSuccessfulDataUrl || lastSuccessfulDataUrl.startsWith('data:image/gif')) { setStatus("No processed image to copy.", 'error'); return; } if (!navigator.clipboard || !navigator.clipboard.write) { setStatus("Clipboard API not supported or permission denied.", 'error'); copyButton.disabled = true; copyButton.title = "Clipboard write access denied or not supported"; return; } try { setStatus("Preparing image for copy...", 'info'); const response = await fetch(lastSuccessfulDataUrl); const blob = await response.blob(); await navigator.clipboard.write([new ClipboardItem({ [blob.type || 'image/png']: blob })]); setStatus("Image copied to clipboard!", 'success'); console.log("Image copied."); } catch (err) { console.error('Copy failed: ', err); setStatus(`Failed to copy: ${err.name}`, 'error'); } }
+        function checkClipboardSupport() {
+             let canCopy = false;
+             // Basic check + try/catch for potential security errors accessing clipboard
+             try {
+                 canCopy = !!(navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem !== 'undefined');
+             } catch (e) {
+                 console.warn("Could not check clipboard support:", e);
+                 canCopy = false;
+             }
+
+             const hasImageData = lastSuccessfulDataUrl && !lastSuccessfulDataUrl.startsWith('data:image/gif');
+             copyButton.disabled = !canCopy || !hasImageData;
+             if (!canCopy) {
+                 copyButton.title = "Clipboard API not supported or access denied.";
+             } else if (!hasImageData) {
+                 copyButton.title = "No processed image data to copy.";
+             } else {
+                 copyButton.title = ""; // Clear title if enabled
+             }
+         }
+
+        // --- Initialize ---
+        // Called from customElements.whenDefined promise
+    </script>
+</body>
+</html>
