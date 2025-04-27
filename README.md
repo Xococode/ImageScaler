@@ -5,7 +5,7 @@ Una aplicación web para escalar imágenes con interpolación bicúbica y ajusta
 ---
 
 ## Acceso rápido a la aplicación 🚀
-👉 [**Probar en vivo aquí**](https://xococode.github.io/EditorFlow/)
+👉 [**Probar en vivo aquí**](https://xococode.github.io/ImageScaler/)
 
 ---
 
