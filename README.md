@@ -4,6 +4,11 @@ Una aplicación web para escalar imágenes con interpolación bicúbica y ajusta
 
 ---
 
+## Acceso rápido a la aplicación 🚀
+👉 [**Probar en vivo aquí**](https://xococode.github.io/EditorFlow/)
+
+---
+
 ## 🧭 Navegación y control de vista
 
 - **Zoom**  
